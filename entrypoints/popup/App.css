@@ -1,0 +1,23 @@
+.popup-root {
+  width: 220px;
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #f7f8f4;
+}
+
+.dashboard-button {
+  width: 100%;
+  border: 1px solid #171717;
+  background: #171717;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dashboard-button:hover {
+  background: #2a2a2a;
+}

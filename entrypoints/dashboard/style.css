@@ -1,0 +1,78 @@
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f4f5ef;
+  color: #191a17;
+}
+
+.dashboard-root {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.dashboard-root h1 {
+  margin: 0 0 20px;
+  font-size: 28px;
+}
+
+.dashboard-card {
+  border: 1px solid #cfd3c4;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.dashboard-card h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.metric-label {
+  margin: 0;
+  color: #4f5348;
+  font-size: 14px;
+}
+
+.metric-value {
+  margin: 4px 0 16px;
+  font-size: 42px;
+  font-weight: 700;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.threshold-input {
+  width: 140px;
+  border: 1px solid #b8bdae;
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 8px 10px;
+}
+
+.hint-text,
+.status-text,
+.error-text {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+
+.status-text {
+  color: #0f4a8a;
+}
+
+.error-text {
+  color: #a42121;
+}
