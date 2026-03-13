@@ -10,12 +10,101 @@ const BLOCKED_PAGE_PATH = '/blocked.html';
 const POLL_INTERVAL_MS = 500;
 const BLOCK_CHECK_INTERVAL_MS = 2_000;
 const COMPLETION_PROGRESS_THRESHOLD = 0.5;
+const COUNT_INCREASE_SOUND_EVENT_NAME = 'life-is-short:youtube-count-sound';
+const COUNT_INCREASE_SOUND_ATTRIBUTE_NAME = 'data-life-is-short-youtube-count-sound';
+const COUNT_INCREASE_SOUND_DURATION_SECONDS = 0.18;
+const COUNT_INCREASE_SOUND_GAIN = 0.045;
+const COUNT_INCREASE_SOUND_START_FREQUENCY = 880;
+const COUNT_INCREASE_SOUND_END_FREQUENCY = 1_176;
+
+type BrowserAudioContext = AudioContext;
+type BrowserAudioContextConstructor = typeof AudioContext;
 
 let currentPageUrl = window.location.href;
 let activeVideo: HTMLVideoElement | null = null;
 let completionCountedForSession = false;
 let completionInFlight = false;
 let lastBlockCheckTimestamp = 0;
+let audioContext: BrowserAudioContext | null = null;
+
+function getAudioContextConstructor():
+  | BrowserAudioContextConstructor
+  | undefined {
+  return window.AudioContext;
+}
+
+function getAudioContext(): BrowserAudioContext | null {
+  const AudioContextConstructor = getAudioContextConstructor();
+  if (!AudioContextConstructor) {
+    return null;
+  }
+
+  if (!audioContext || audioContext.state === 'closed') {
+    audioContext = new AudioContextConstructor();
+  }
+
+  return audioContext;
+}
+
+function emitCountIncreaseSoundEvent(count: number): void {
+  window.dispatchEvent(
+    new CustomEvent(COUNT_INCREASE_SOUND_EVENT_NAME, {
+      detail: { count },
+    }),
+  );
+}
+
+function markCountIncreaseSound(count: number): void {
+  document.documentElement.setAttribute(
+    COUNT_INCREASE_SOUND_ATTRIBUTE_NAME,
+    String(count),
+  );
+}
+
+async function playCountIncreaseSound(count: number): Promise<void> {
+  markCountIncreaseSound(count);
+  emitCountIncreaseSoundEvent(count);
+
+  const context = getAudioContext();
+  if (!context) {
+    return;
+  }
+
+  try {
+    if (context.state === 'suspended') {
+      await context.resume();
+    }
+  } catch {
+    return;
+  }
+
+  const startTime = context.currentTime;
+  const stopTime = startTime + COUNT_INCREASE_SOUND_DURATION_SECONDS;
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+
+  oscillator.type = 'triangle';
+  oscillator.frequency.setValueAtTime(
+    COUNT_INCREASE_SOUND_START_FREQUENCY,
+    startTime,
+  );
+  oscillator.frequency.exponentialRampToValueAtTime(
+    COUNT_INCREASE_SOUND_END_FREQUENCY,
+    stopTime,
+  );
+
+  gainNode.gain.setValueAtTime(0.0001, startTime);
+  gainNode.gain.exponentialRampToValueAtTime(
+    COUNT_INCREASE_SOUND_GAIN,
+    startTime + 0.02,
+  );
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(context.destination);
+  oscillator.start(startTime);
+  oscillator.stop(stopTime);
+}
 
 function getBlockedPageUrl(fromUrl: string): string | null {
   const baseUrl = getExtensionUrl(BLOCKED_PAGE_PATH);
@@ -127,6 +216,7 @@ async function recordCompletion(): Promise<void> {
     }
 
     completionCountedForSession = true;
+    void playCountIncreaseSound(response.status.count);
 
     if (response.status.blocked) {
       const blockedUrl = getBlockedPageUrl(window.location.href);
