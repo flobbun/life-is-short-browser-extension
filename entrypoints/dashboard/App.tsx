@@ -111,7 +111,7 @@ function App() {
   return (
     <main className="dashboard-root">
       <header>
-        <h1>Life Is Short Dashboard</h1>
+        <h1>Life is short Dashboard</h1>
       </header>
 
       <section className="dashboard-card" aria-label="YouTube">

@@ -1,7 +1,7 @@
-# Life Is Short Browser Extension
+# Life is short Browser Extension
 
 ## 1. What this project is and its purpose
-Life Is Short is a browser extension designed to reduce compulsive time-wasting behavior across social/content platforms.
+Life is short is a browser extension designed to reduce compulsive time-wasting behavior across social/content platforms.
 
 YouTube is the first implemented module. It tracks how many videos you watch in a day and blocks YouTube after you hit your configured daily threshold. The message shown on block is intended as a behavioral nudge: stop scrolling and spend time on higher-value actions.
 

@@ -4,9 +4,8 @@ import {
   type GetSiteStatusResponse,
   type UsageIncrementResponse,
 } from '@/src/core/messages';
-import { getExtensionUrl } from '@/src/core/runtime-url';
+import { BLOCK_ALERT_TEXT } from '@/src/constants/text';
 
-const BLOCKED_PAGE_PATH = '/blocked.html';
 const POLL_INTERVAL_MS = 500;
 const BLOCK_CHECK_INTERVAL_MS = 2_000;
 const COMPLETION_PROGRESS_THRESHOLD = 0.5;
@@ -16,6 +15,7 @@ const COUNT_INCREASE_SOUND_DURATION_SECONDS = 0.18;
 const COUNT_INCREASE_SOUND_GAIN = 0.045;
 const COUNT_INCREASE_SOUND_START_FREQUENCY = 880;
 const COUNT_INCREASE_SOUND_END_FREQUENCY = 1_176;
+const BLOCK_SCREEN_ID = 'life-is-short-youtube-block-screen';
 
 type BrowserAudioContext = AudioContext;
 type BrowserAudioContextConstructor = typeof AudioContext;
@@ -26,6 +26,8 @@ let completionCountedForSession = false;
 let completionInFlight = false;
 let lastBlockCheckTimestamp = 0;
 let audioContext: BrowserAudioContext | null = null;
+let blockCheckInFlight = false;
+let deferBlockUntilNextSession = false;
 
 function getAudioContextConstructor():
   | BrowserAudioContextConstructor
@@ -106,18 +108,6 @@ async function playCountIncreaseSound(count: number): Promise<void> {
   oscillator.stop(stopTime);
 }
 
-function getBlockedPageUrl(fromUrl: string): string | null {
-  const baseUrl = getExtensionUrl(BLOCKED_PAGE_PATH);
-  if (!baseUrl) {
-    return null;
-  }
-
-  const blockedUrl = new URL(baseUrl);
-  blockedUrl.searchParams.set('site', 'youtube');
-  blockedUrl.searchParams.set('from', fromUrl);
-  return blockedUrl.toString();
-}
-
 function isAtPlaybackStart(video: HTMLVideoElement): boolean {
   return video.currentTime <= 1;
 }
@@ -177,26 +167,82 @@ function maybeRecordCompletionFromActiveVideo(): void {
   }
 }
 
-async function redirectIfBlocked(): Promise<boolean> {
-  const response = await sendRuntimeMessage<GetSiteStatusResponse>({
-    type: MESSAGE_TYPES.getSiteStatus,
-    siteId: 'youtube',
+function getBlockScreen(): HTMLElement | null {
+  return document.getElementById(BLOCK_SCREEN_ID);
+}
+
+function pauseAllVideos(): void {
+  const videos = document.querySelectorAll<HTMLVideoElement>('video');
+  for (const video of videos) {
+    video.pause();
+  }
+}
+
+function renderBlockScreen(): void {
+  if (getBlockScreen()) {
+    pauseAllVideos();
+    return;
+  }
+
+  const blockScreen = document.createElement('div');
+  blockScreen.id = BLOCK_SCREEN_ID;
+  blockScreen.setAttribute('aria-live', 'assertive');
+  blockScreen.setAttribute('role', 'dialog');
+  Object.assign(blockScreen.style, {
+    position: 'fixed',
+    inset: '0',
+    zIndex: '2147483647',
+    display: 'grid',
+    placeItems: 'center',
+    padding: '32px',
+    background: '#000',
+    color: '#fff',
+    textAlign: 'center',
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontSize: 'clamp(28px, 4vw, 48px)',
+    lineHeight: '1.2',
+    letterSpacing: '0.01em',
   });
+  blockScreen.textContent = BLOCK_ALERT_TEXT;
 
-  if (!response.ok) {
-    return false;
+  document.documentElement.append(blockScreen);
+  pauseAllVideos();
+}
+
+function removeBlockScreen(): void {
+  getBlockScreen()?.remove();
+}
+
+async function maybeShowBlockScreen(): Promise<boolean> {
+  if (blockCheckInFlight) {
+    return Boolean(getBlockScreen());
   }
 
-  if (!response.status.blocked) {
-    return false;
-  }
+  blockCheckInFlight = true;
+  try {
+    const response = await sendRuntimeMessage<GetSiteStatusResponse>({
+      type: MESSAGE_TYPES.getSiteStatus,
+      siteId: 'youtube',
+    });
 
-  const blockedUrl = getBlockedPageUrl(window.location.href);
-  if (blockedUrl && window.location.href !== blockedUrl) {
-    window.location.replace(blockedUrl);
-  }
+    if (!response.ok) {
+      return false;
+    }
 
-  return true;
+    if (!response.status.blocked) {
+      removeBlockScreen();
+      return false;
+    }
+
+    if (deferBlockUntilNextSession) {
+      return false;
+    }
+
+    renderBlockScreen();
+    return true;
+  } finally {
+    blockCheckInFlight = false;
+  }
 }
 
 async function recordCompletion(): Promise<void> {
@@ -219,10 +265,8 @@ async function recordCompletion(): Promise<void> {
     void playCountIncreaseSound(response.status.count);
 
     if (response.status.blocked) {
-      const blockedUrl = getBlockedPageUrl(window.location.href);
-      if (blockedUrl) {
-        window.location.replace(blockedUrl);
-      }
+      // Let the current video finish. Enforcement happens on the next attempt.
+      deferBlockUntilNextSession = true;
     }
   } finally {
     completionInFlight = false;
@@ -235,8 +279,10 @@ function onVideoPlay(): void {
   }
 
   if (isAtPlaybackStart(activeVideo)) {
+    deferBlockUntilNextSession = false;
     completionCountedForSession = false;
     completionInFlight = false;
+    void maybeShowBlockScreen();
   }
 }
 
@@ -275,6 +321,10 @@ function refreshVideoBinding(): void {
     detachVideoListeners(activeVideo);
   }
 
+  if (activeVideo && video !== activeVideo) {
+    deferBlockUntilNextSession = false;
+  }
+
   activeVideo = video;
   completionCountedForSession = false;
   completionInFlight = false;
@@ -288,14 +338,19 @@ async function tick(): Promise<void> {
   const latestUrl = window.location.href;
   if (latestUrl !== currentPageUrl) {
     currentPageUrl = latestUrl;
+    deferBlockUntilNextSession = false;
     completionCountedForSession = false;
-    await redirectIfBlocked();
+    if (await maybeShowBlockScreen()) {
+      return;
+    }
   }
 
   const now = Date.now();
   if (now - lastBlockCheckTimestamp >= BLOCK_CHECK_INTERVAL_MS) {
     lastBlockCheckTimestamp = now;
-    await redirectIfBlocked();
+    if (await maybeShowBlockScreen()) {
+      return;
+    }
   }
 
   refreshVideoBinding();
@@ -312,7 +367,7 @@ export default defineContentScript({
   excludeMatches: ['*://music.youtube.com/*', '*://*.music.youtube.com/*'],
   runAt: 'document_start',
   main(ctx) {
-    void redirectIfBlocked();
+    void maybeShowBlockScreen();
 
     const intervalId = ctx.setInterval(() => {
       void tick();

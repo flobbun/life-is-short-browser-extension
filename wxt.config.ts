@@ -3,7 +3,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Life Is Short',
+    name: 'Life is short',
     description:
       'Track daily YouTube completions and block access when your daily threshold is reached.',
     icons: {
@@ -23,7 +23,7 @@ export default defineConfig({
       '*://*.linkedin.com/*',
     ],
     action: {
-      default_title: 'Life Is Short',
+      default_title: 'Life is short',
       default_icon: {
         16: 'icon/16.png',
         32: 'icon/32.png',
