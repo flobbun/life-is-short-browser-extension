@@ -29,12 +29,13 @@ export function clampYoutubeResetWindowHours(value: number): number {
 
 export function shouldSiteBeBlocked(args: {
   usage: SiteUsage;
+  extensionEnabled: boolean;
   enabled: boolean;
   threshold?: number;
 }): boolean {
-  const { usage, enabled, threshold } = args;
+  const { usage, extensionEnabled, enabled, threshold } = args;
 
-  if (!enabled) {
+  if (!extensionEnabled || !enabled) {
     return false;
   }
 
@@ -52,9 +53,10 @@ export function shouldSiteBeBlocked(args: {
 export function shouldLatchBlockForYoutube(args: {
   usage: SiteUsage;
   settings: SiteSettings['youtube'];
+  extensionEnabled: boolean;
 }): boolean {
-  const { usage, settings } = args;
-  if (!settings.enabled) {
+  const { usage, settings, extensionEnabled } = args;
+  if (!extensionEnabled || !settings.enabled) {
     return false;
   }
 

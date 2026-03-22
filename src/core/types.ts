@@ -17,6 +17,10 @@ export type SiteSettings = {
   linkedin: LinkedinSettings;
 };
 
+export type ExtensionSettings = SiteSettings & {
+  extensionEnabled: boolean;
+};
+
 export type SiteUsage = {
   count: number;
   blockedLatched: boolean;
@@ -42,6 +46,7 @@ export type SiteStatus = {
   count: number;
   blocked: boolean;
   enabled: boolean;
+  extensionEnabled: boolean;
   threshold?: number;
   resetWindowHours?: number;
 };
@@ -49,5 +54,5 @@ export type SiteStatus = {
 export type DashboardState = {
   usage: UsageState;
   persistentUsage: PersistentUsageState;
-  settings: SiteSettings;
+  settings: ExtensionSettings;
 };

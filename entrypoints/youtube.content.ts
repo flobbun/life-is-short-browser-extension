@@ -261,6 +261,12 @@ async function recordCompletion(): Promise<void> {
       return;
     }
 
+    if (!response.status.extensionEnabled) {
+      completionCountedForSession = true;
+      deferBlockUntilNextSession = false;
+      return;
+    }
+
     completionCountedForSession = true;
     void playCountIncreaseSound(response.status.count);
 

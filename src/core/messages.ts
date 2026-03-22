@@ -1,9 +1,15 @@
-import type { DashboardState, SiteId, SiteStatus } from './types';
+import type {
+  DashboardState,
+  ExtensionSettings,
+  SiteId,
+  SiteStatus,
+} from './types';
 
 export const MESSAGE_TYPES = {
   usageIncrement: 'USAGE_INCREMENT',
   getSiteStatus: 'GET_SITE_STATUS',
   updateYoutubeSettings: 'UPDATE_YOUTUBE_SETTINGS',
+  updateExtensionEnabled: 'UPDATE_EXTENSION_ENABLED',
   getDashboardState: 'GET_DASHBOARD_STATE',
 } as const;
 
@@ -24,6 +30,11 @@ export type UpdateYoutubeSettingsMessage = {
   resetWindowHours?: number;
 };
 
+export type UpdateExtensionEnabledMessage = {
+  type: typeof MESSAGE_TYPES.updateExtensionEnabled;
+  enabled: boolean;
+};
+
 export type GetDashboardStateMessage = {
   type: typeof MESSAGE_TYPES.getDashboardState;
 };
@@ -32,6 +43,7 @@ export type RuntimeMessage =
   | UsageIncrementMessage
   | GetSiteStatusMessage
   | UpdateYoutubeSettingsMessage
+  | UpdateExtensionEnabledMessage
   | GetDashboardStateMessage;
 
 export type UsageIncrementResponse = {
@@ -49,6 +61,11 @@ export type UpdateYoutubeSettingsResponse = {
   status: SiteStatus;
 };
 
+export type UpdateExtensionEnabledResponse = {
+  ok: true;
+  settings: ExtensionSettings;
+};
+
 export type GetDashboardStateResponse = {
   ok: true;
   dashboard: DashboardState;
@@ -63,6 +80,7 @@ export type SuccessRuntimeResponse =
   | UsageIncrementResponse
   | GetSiteStatusResponse
   | UpdateYoutubeSettingsResponse
+  | UpdateExtensionEnabledResponse
   | GetDashboardStateResponse;
 
 export type RuntimeResponse = SuccessRuntimeResponse | ErrorResponse;

@@ -5,30 +5,42 @@ import {
   type GetSiteStatusResponse,
   type RuntimeMessage,
   type RuntimeResponse,
+  type UpdateExtensionEnabledMessage,
+  type UpdateExtensionEnabledResponse,
   type UpdateYoutubeSettingsMessage,
   type UpdateYoutubeSettingsResponse,
   type UsageIncrementResponse,
 } from '@/src/core/messages';
 import { getPersistentUsageState, incrementPersistentSiteUsage } from '@/src/core/persistent-usage-store';
 import { shouldLatchBlockForYoutube, shouldSiteBeBlocked } from '@/src/core/policy-engine';
-import { getSettings, updateYoutubeSettings } from '@/src/core/settings-store';
+import {
+  getSettings,
+  updateExtensionEnabled,
+  updateYoutubeSettings,
+} from '@/src/core/settings-store';
 import {
   getUsageStateForCurrentWindow,
   incrementSiteUsage,
   latchSiteBlock,
 } from '@/src/core/usage-store';
-import type { SiteId, SiteSettings, SiteStatus, SiteUsage } from '@/src/core/types';
+import type {
+  ExtensionSettings,
+  SiteId,
+  SiteStatus,
+  SiteUsage,
+} from '@/src/core/types';
 
 function toSiteStatus(args: {
   siteId: SiteId;
   usage: SiteUsage;
-  settings: SiteSettings;
+  settings: ExtensionSettings;
 }): SiteStatus {
   const { siteId, usage, settings } = args;
 
   if (siteId === 'youtube') {
     const blocked = shouldSiteBeBlocked({
       usage,
+      extensionEnabled: settings.extensionEnabled,
       enabled: settings.youtube.enabled,
       threshold: settings.youtube.threshold,
     });
@@ -38,6 +50,7 @@ function toSiteStatus(args: {
       count: usage.count,
       blocked,
       enabled: settings.youtube.enabled,
+      extensionEnabled: settings.extensionEnabled,
       threshold: settings.youtube.threshold,
       resetWindowHours: settings.youtube.resetWindowHours,
     };
@@ -48,9 +61,11 @@ function toSiteStatus(args: {
     count: usage.count,
     blocked: shouldSiteBeBlocked({
       usage,
+      extensionEnabled: settings.extensionEnabled,
       enabled: settings.linkedin.enabled,
     }),
     enabled: settings.linkedin.enabled,
+    extensionEnabled: settings.extensionEnabled,
   };
 }
 
@@ -69,7 +84,20 @@ async function handleUsageIncrement(
   siteId: SiteId,
 ): Promise<UsageIncrementResponse> {
   const settings = await getSettings();
-  let usage = await incrementSiteUsage(siteId, settings);
+  let usage = await getUsageStateForCurrentWindow(settings);
+
+  if (!settings.extensionEnabled) {
+    return {
+      ok: true,
+      status: toSiteStatus({
+        siteId,
+        usage: usage.sites[siteId],
+        settings,
+      }),
+    };
+  }
+
+  usage = await incrementSiteUsage(siteId, settings);
   await incrementPersistentSiteUsage(siteId);
 
   if (
@@ -77,6 +105,7 @@ async function handleUsageIncrement(
     shouldLatchBlockForYoutube({
       usage: usage.sites.youtube,
       settings: settings.youtube,
+      extensionEnabled: settings.extensionEnabled,
     })
   ) {
     usage = await latchSiteBlock('youtube', settings);
@@ -92,12 +121,20 @@ async function handleUsageIncrement(
   };
 }
 
+async function handleExtensionEnabledUpdate(
+  message: UpdateExtensionEnabledMessage,
+): Promise<UpdateExtensionEnabledResponse> {
+  return {
+    ok: true,
+    settings: await updateExtensionEnabled(message.enabled),
+  };
+}
+
 async function handleYoutubeSettingsUpdate(
   message: UpdateYoutubeSettingsMessage,
 ): Promise<UpdateYoutubeSettingsResponse> {
   const beforeSettings = await getSettings();
   const previousThreshold = beforeSettings.youtube.threshold;
-
   const nextSettings = await updateYoutubeSettings({
     threshold: message.threshold,
     resetWindowHours: message.resetWindowHours,
@@ -133,6 +170,8 @@ async function handleMessage(message: RuntimeMessage): Promise<RuntimeResponse> 
       } satisfies GetSiteStatusResponse;
     case MESSAGE_TYPES.updateYoutubeSettings:
       return handleYoutubeSettingsUpdate(message);
+    case MESSAGE_TYPES.updateExtensionEnabled:
+      return handleExtensionEnabledUpdate(message);
     case MESSAGE_TYPES.getDashboardState: {
       const settings = await getSettings();
       const [usage, persistentUsage] = await Promise.all([

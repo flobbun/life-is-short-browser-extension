@@ -2,10 +2,6 @@
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-}
-
 body {
   margin: 0;
   min-height: 100vh;
@@ -16,19 +12,79 @@ body {
 }
 
 .dashboard-root {
-  max-width: 860px;
   margin: 0 auto;
   padding: 40px 24px 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
-.dashboard-header {
-  margin-bottom: 24px;
+.extension-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #cfd3c4;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 10px 12px 10px 16px;
+  color: inherit;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(38, 43, 29, 0.08);
+  margin-left: auto;
+  margin-bottom: 6px;
 }
 
-.dashboard-root h1 {
-  margin: 0;
-  font-size: clamp(32px, 6vw, 56px);
-  line-height: 0.95;
+.extension-switch:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.extension-switch-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.extension-switch-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #606457;
+}
+
+.extension-switch-state {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.extension-switch-track {
+  position: relative;
+  width: 56px;
+  height: 30px;
+  border-radius: 999px;
+  background: #d1d7c2;
+  transition: background-color 160ms ease;
+}
+
+.extension-switch-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(25, 26, 23, 0.18);
+  transition: transform 160ms ease;
+}
+
+.extension-switch[aria-checked='true'] .extension-switch-track {
+  background: #7f9254;
+}
+
+.extension-switch[aria-checked='true'] .extension-switch-thumb {
+  transform: translateX(26px);
 }
 
 .dashboard-subtitle {
@@ -45,6 +101,7 @@ body {
   border-radius: 22px;
   padding: 28px;
   box-shadow: 0 18px 48px rgba(38, 43, 29, 0.08);
+  max-width: 50vw;
 }
 
 .card-overview {
@@ -184,4 +241,74 @@ body {
 
 .error-text {
   color: #a42121;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(25, 26, 23, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.confirmation-modal {
+  width: min(100%, 440px);
+  border: 1px solid #d7dccb;
+  border-radius: 24px;
+  background: #fffdf7;
+  padding: 24px;
+  box-shadow: 0 22px 60px rgba(25, 26, 23, 0.18);
+}
+
+.confirmation-title {
+  margin: 0 0 18px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.modal-input {
+  max-width: none;
+}
+
+.modal-error-text {
+  margin-top: 12px;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.confirmation-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 18px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmation-button.confirm {
+  background: #7f9254;
+  color: #fff;
+}
+
+.confirmation-button.cancel {
+  background: #ecefe3;
+  color: #191a17;
+}
+
+@media (max-width: 760px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .extension-switch {
+    align-self: flex-end;
+  }
 }

@@ -3,14 +3,17 @@ import {
   clampYoutubeResetWindowHours,
   clampYoutubeThreshold,
 } from './policy-engine';
-import type { SiteSettings } from './types';
+import type { ExtensionSettings, SiteSettings } from './types';
 
 const SETTINGS_STORAGE_KEY = 'lifeIsShort.settings.v1';
 
-function normalizeSettings(partial: Partial<SiteSettings> | undefined): SiteSettings {
+function normalizeSettings(
+  partial: Partial<ExtensionSettings> | undefined,
+): ExtensionSettings {
   const defaults = getDefaultSiteSettings();
 
   return {
+    extensionEnabled: partial?.extensionEnabled ?? true,
     youtube: {
       enabled: partial?.youtube?.enabled ?? defaults.youtube.enabled,
       threshold: clampYoutubeThreshold(
@@ -26,10 +29,10 @@ function normalizeSettings(partial: Partial<SiteSettings> | undefined): SiteSett
   };
 }
 
-export async function getSettings(): Promise<SiteSettings> {
+export async function getSettings(): Promise<ExtensionSettings> {
   const result = await browser.storage.sync.get(SETTINGS_STORAGE_KEY);
   const normalized = normalizeSettings(
-    result[SETTINGS_STORAGE_KEY] as Partial<SiteSettings> | undefined,
+    result[SETTINGS_STORAGE_KEY] as Partial<ExtensionSettings> | undefined,
   );
 
   await browser.storage.sync.set({ [SETTINGS_STORAGE_KEY]: normalized });
@@ -40,9 +43,9 @@ export async function updateYoutubeSettings(
   updates: Partial<
     Pick<SiteSettings['youtube'], 'threshold' | 'resetWindowHours'>
   >,
-): Promise<SiteSettings> {
+): Promise<ExtensionSettings> {
   const settings = await getSettings();
-  const nextSettings: SiteSettings = {
+  const nextSettings: ExtensionSettings = {
     ...settings,
     youtube: {
       ...settings.youtube,
@@ -61,7 +64,20 @@ export async function updateYoutubeSettings(
   return nextSettings;
 }
 
-export async function setSettings(settings: SiteSettings): Promise<void> {
+export async function updateExtensionEnabled(
+  enabled: boolean,
+): Promise<ExtensionSettings> {
+  const settings = await getSettings();
+  const nextSettings: ExtensionSettings = {
+    ...settings,
+    extensionEnabled: enabled,
+  };
+
+  await browser.storage.sync.set({ [SETTINGS_STORAGE_KEY]: nextSettings });
+  return nextSettings;
+}
+
+export async function setSettings(settings: ExtensionSettings): Promise<void> {
   await browser.storage.sync.set({
     [SETTINGS_STORAGE_KEY]: normalizeSettings(settings),
   });
